@@ -28,7 +28,7 @@ filtbbox <- st_bbox(obj = c(xmin = -89, xmax = -87, ymin = 41, ymax = 42.45),crs
 filt_data <- st_within(zips_chicago, filtbbox)
 filt_data <- zips_chicago[which(lengths(filt_data) != 0), ]
 
-st_write(filt_data,'data\\filtdata.shp')
+st_write(filt_data,'data\\filtdata.shp',)
 
 ggplot(filt_data)+
   geom_sf(aes(fill = total))+
@@ -100,3 +100,39 @@ ggplot(filt_data)+
   
 
 filt_data %>% st_drop_geometry() %>% write_csv('out\\zips_grouped.csv')
+
+
+#add second layer
+
+points_df <- data.frame(
+  local = c('Homewood', 'La Grange', 'Riverside'),
+  lat = c(41.561150435874005, 41.81452909413291,41.82800880086439 ),
+  lon = c(-87.66453788220142,-87.87064915680024, -87.8191135721436)
+) %>% st_as_sf(coords = c('lon', 'lat'), crs = 4326)%>%
+  st_transform(st_crs(filt_data)) %>% 
+  st_buffer(8046.72)
+
+
+
+ggplot(filt_data)+
+  geom_sf( fill  = 'red')+
+  geom_sf(data = grupos, alpha = .2) +
+  geom_sf(data = points_df, fill = 'steelblue', alpha = .6)
+
+# new bbox
+filtbbox2 <- st_bbox(obj = c(xmin = -125.0011, xmax = -66.9326, ymin = 22, ymax = 49.5904),crs = 4326) %>% 
+  st_as_sfc(.) %>% 
+  st_transform(st_crs(zip_shp)) 
+
+filt_data2 <- st_within(zip_shp %>% st_transform(crs =  6454), filtbbox2 %>% st_transform(crs =  6454))
+filt_data2 <- st_transform(zip_shp,crs =  6454)[which(lengths(filt_data2) != 0), ]
+
+ggplot(filt_data2)+geom_sf()
+
+
+df_codes <- left_join(filt_data2 %>% st_drop_geometry(), filt_data %>% st_drop_geometry(),
+                      by = c("ZCTA5CE10", "AFFGEOID10", "GEOID10", "ALAND10", "AWATER10"))
+
+df_codes$group[is.na(df_codes$group)] <- 7
+
+df_codes %>% write_csv('out\\zips_grouped.csv')
